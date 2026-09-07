@@ -1,0 +1,127 @@
+clc; clear; close all;
+
+disp('====================================================');
+disp('     HAMMING CODE TRANSMISSION ANALYTICS');
+disp('====================================================');
+
+% 1. Input Data Analysis
+text = input('Enter text to transmit: ', 's');
+if isempty(text), text = 'Hello'; end
+
+b2t = @(b) char(bin2dec(char(reshape(b, 8, []).' + '0'))).';
+data_bits = reshape(dec2bin(double(text), 8)' - '0', 1, []);
+num_blocks = length(data_bits) / 4;
+
+fprintf('\n----------------------------------------------------\n  1. INPUT DATA ANALYSIS\n----------------------------------------------------\n');
+fprintf('Original Text       : %s\nCharacter Count     : %d\nRaw Binary Bits     : %d bits\n', ...
+    text, length(text), length(data_bits));
+
+% 2. Parity Generation Equations
+fprintf('\n====================================================\n           PARITY GENERATION EQUATIONS             \n====================================================\n');
+fprintf(' Data Bits   : d1, d2, d3, d4  (Positions 3, 5, 6, 7)\n');
+fprintf(' Parity Bits : p1, p2, p4      (Positions 1, 2, 4)\n\n');
+fprintf(' Equations:  p1 = mod(d1 + d2 + d4, 2)\n            p2 = mod(d1 + d3 + d4, 2)\n            p4 = mod(d2 + d3 + d4, 2)\n');
+fprintf('====================================================\n');
+
+% 3. Encoding Process
+encoded = zeros(1, num_blocks * 7);
+fprintf('\n----------------------------------------------------\n  2. ENCODING PROCESS (4-bit Data -> 7-bit Codeword)\n----------------------------------------------------\n');
+fprintf('Codeword Structure : [p1  p2  d1  p4  d2  d3  d4]\n');
+fprintf('Bit Index          :   1   2   3   4   5   6   7 \n');
+fprintf('----------------------------------------------------\n');
+fprintf('Block | Data (d1 d2 d3 d4) | Parities (p1 p2 p4) | Codeword (p1 p2 d1 p4 d2 d3 d4)\n');
+fprintf('------|-------------------|----------------------|--------------------------------\n');
+
+for k = 1:num_blocks
+    d = data_bits((k-1)*4 + 1 : k*4);
+    p = [mod(d(1)+d(2)+d(4),2), mod(d(1)+d(3)+d(4),2), mod(d(2)+d(3)+d(4),2)];
+    cw = [p(1), p(2), d(1), p(3), d(2), d(3), d(4)];
+    encoded((k-1)*7 + 1 : k*7) = cw;
+    fprintf(' %3d  |     %d %d %d %d       |        %d  %d  %d      |    %d %d %d %d %d %d %d\n', k, d, p, cw);
+end
+
+fprintf('\nTotal Encoded Bits  : %d bits (42.86%% Redundancy Overhead)\n', length(encoded));
+
+% 4. Error Injection with Bit Selection Reference
+fprintf('\n----------------------------------------------------\n  3. ERROR INJECTION WITH BIT SELECTION REFERENCE\n----------------------------------------------------\n');
+fprintf('Total stream length: 1 to %d bits (%d blocks).\n\n', length(encoded), num_blocks);
+fprintf('BIT SELECTION REFERENCE:\nBlock | Parity Bit Positions (Metadata) | Data Bit Positions (Text Distortion)\n------|---------------------------------|-------------------------------------\n');
+
+for k = 1:num_blocks
+    base = (k-1)*7;
+    fprintf(' %3d  | %3d, %3d, %3d                 | %3d, %3d, %3d, %3d\n', k, base+[1,2,4], base+[3,5,6,7]);
+end
+
+fprintf('\n');
+
+pos_list = input('Enter bit position(s) to corrupt as vector [e.g., 3 10 17] (0 for no error): ');
+valid_pos = pos_list(pos_list > 0 & pos_list <= length(encoded));
+
+received = encoded;
+if ~isempty(valid_pos)
+    for p = valid_pos
+        received(p) = 1 - received(p);
+        blk = ceil(p / 7);
+        bit_in_blk = mod(p - 1, 7) + 1;
+        type_str = 'PARITY BIT';
+        if ismember(bit_in_blk, [3, 5, 6, 7]), type_str = 'DATA BIT'; end
+        fprintf('--> Bit %d flipped (Block %d, Pos %d - %s).\n', p, blk, bit_in_blk, type_str);
+    end
+else
+    fprintf('--> No error introduced.\n');
+end
+
+% 5. Processing & Web Dashboard Data Preparation
+decoded_bits = zeros(1, num_blocks * 4);
+corrupted_bits = zeros(1, num_blocks * 4);
+block_records = cell(1, num_blocks);
+
+for k = 1:num_blocks
+    sent_b = encoded((k-1)*7 + 1 : k*7);
+    b = received((k-1)*7 + 1 : k*7);
+    s = [mod(b(1)+b(3)+b(5)+b(7), 2), mod(b(2)+b(3)+b(6)+b(7), 2), mod(b(4)+b(5)+b(6)+b(7), 2)];
+
+    raw_d = b([3, 5, 6, 7]);
+    if isequal(s, [1 0 0]), raw_d(1) = ~raw_d(1);
+    elseif isequal(s, [0 1 0]), raw_d(2) = ~raw_d(2);
+    elseif isequal(s, [0 0 1]), raw_d(3) = ~raw_d(3);
+    end
+    corrupted_bits((k-1)*4 + 1 : k*4) = raw_d;
+
+    syn_val = s(1) + 2*s(2) + 4*s(3);
+    if syn_val ~= 0
+        b(syn_val) = ~b(syn_val);
+        action = sprintf('CORRECTED Bit %d', syn_val);
+    else
+        action = 'NO ERROR';
+    end
+
+    decoded_bits((k-1)*4 + 1 : k*4) = b([3, 5, 6, 7]);
+    
+    sent_str = sprintf('%d %d %d %d %d %d %d', sent_b);
+    rec_str = sprintf('%d %d %d %d %d %d %d', received((k-1)*7 + 1 : k*7));
+    syn_str = sprintf('%d %d %d', s(3), s(2), s(1));
+    
+    block_records{k} = sprintf('%d|%s|%s|%s|%d|%s', k, sent_str, rec_str, syn_str, syn_val, action);
+end
+
+% 6. Reconstructed Output & Dashboard Trigger
+corrupted_text = b2t(corrupted_bits);
+result = b2t(decoded_bits);
+
+fprintf('\n----------------------------------------------------\n  4. RECONSTRUCTED OUTPUT\n----------------------------------------------------\n');
+fprintf('Original Text  : %s\n', text);
+fprintf('Corrupted Text : %s\n', corrupted_text);
+fprintf('Recovered Text : %s\n\n', result);
+
+baseUrl = 'https://sadaf0915.github.io/Hamming_Code/';
+urlEnc = @(str) char(java.net.URLEncoder.encode(str, 'UTF-8'));
+
+blocks_param = strjoin(block_records, ';');
+num_errors = length(valid_pos);
+
+fullUrl = sprintf('%s?orig=%s&corr=%s&rec=%s&errs=%d&blocks=%s', ...
+    baseUrl, urlEnc(text), urlEnc(corrupted_text), urlEnc(result), num_errors, urlEnc(blocks_param));
+
+disp('Opening Web Dashboard...');
+web(fullUrl, '-browser');
