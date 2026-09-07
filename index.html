@@ -111,6 +111,71 @@
     <!-- Status Banner -->
     <div id="statusBanner" class="status-banner status-success">Processing Transmission Stream...</div>
 
+    <!-- Static Syndrome Reference Table -->
+    <div class="card">
+        <h2>Syndrome Decoding Reference Table</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Syndrome (S4 S2 S1)</th>
+                    <th>Decimal Value</th>
+                    <th>Error Position</th>
+                    <th>Action Taken</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>0 0 0</td>
+                    <td>0</td>
+                    <td>None</td>
+                    <td class="action-no-error">NO ERROR</td>
+                </tr>
+                <tr>
+                    <td>0 0 1</td>
+                    <td>1</td>
+                    <td>Bit 1</td>
+                    <td class="action-corrected">CORRECTED Bit 1 (p1)</td>
+                </tr>
+                <tr>
+                    <td>0 1 0</td>
+                    <td>2</td>
+                    <td>Bit 2</td>
+                    <td class="action-corrected">CORRECTED Bit 2 (p2)</td>
+                </tr>
+                <tr>
+                    <td>0 1 1</td>
+                    <td>3</td>
+                    <td>Bit 3</td>
+                    <td class="action-corrected">CORRECTED Bit 3 (d1)</td>
+                </tr>
+                <tr>
+                    <td>1 0 0</td>
+                    <td>4</td>
+                    <td>Bit 4</td>
+                    <td class="action-corrected">CORRECTED Bit 4 (p4)</td>
+                </tr>
+                <tr>
+                    <td>1 0 1</td>
+                    <td>5</td>
+                    <td>Bit 5</td>
+                    <td class="action-corrected">CORRECTED Bit 5 (d2)</td>
+                </tr>
+                <tr>
+                    <td>1 1 0</td>
+                    <td>6</td>
+                    <td>Bit 6</td>
+                    <td class="action-corrected">CORRECTED Bit 6 (d3)</td>
+                </tr>
+                <tr>
+                    <td>1 1 1</td>
+                    <td>7</td>
+                    <td>Bit 7</td>
+                    <td class="action-corrected">CORRECTED Bit 7 (d4)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
     <!-- Decoding & Syndrome Analysis Card -->
     <div class="card">
         <h2>4. Decoding & Syndrome Analysis</h2>
@@ -172,7 +237,7 @@
         const ber = totalBits > 0 ? ((errs / totalBits) * 100).toFixed(2) : '0.00';
         document.getElementById('berVal').textContent = ber + '%';
 
-        // Render Syndrome Table & Highlighted Errors
+        // Render Dynamic Syndrome Table & Highlighted Errors
         const tbody = document.getElementById('syndromeTableBody');
         if (blocksData) {
             const rows = blocksData.split(';');
