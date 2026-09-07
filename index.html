@@ -57,19 +57,20 @@
         .status-fail { background: rgba(239, 68, 68, 0.15); color: var(--error); border: 1px solid var(--error); }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-family: monospace; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; }
-        th { color: var(--accent); font-size: 13px; }
-        
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-info { background: #0284c7; color: white; }
-        .badge-warn { background: #d97706; color: white; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #334155; }
+        th { color: var(--accent); font-size: 13px; text-transform: uppercase; background: #0f172a; }
+        tr:hover { background: rgba(56, 189, 248, 0.05); }
+
+        .action-no-error { color: #94a3b8; }
+        .action-corrected { color: var(--success); font-weight: bold; }
+        .action-failed { color: var(--error); font-weight: bold; }
     </style>
 </head>
 <body>
 
     <h1>Hamming (7,4) Channel Transmission Analytics</h1>
 
-    <!-- Output Text Metrics -->
+    <!-- Output Text Overview -->
     <div class="grid">
         <div class="metric-box">
             <div class="metric-title">Original Text</div>
@@ -88,97 +89,98 @@
     <!-- Status Banner -->
     <div id="statusBanner" class="status-banner status-success">Processing Transmission Stream...</div>
 
-    <!-- Information Theory & Channel Metrics -->
+    <!-- Decoding & Syndrome Table -->
+    <div class="card">
+        <h2>4. Decoding & Syndrome Analysis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Block</th>
+                    <th>Received Block</th>
+                    <th>Syndrome (S4 S2 S1)</th>
+                    <th>Error Pos</th>
+                    <th>Action Taken</th>
+                </tr>
+            </thead>
+            <tbody id="syndromeTableBody">
+                <!-- Dynamically populated from MATLAB parameters -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Information Theory Performance Metrics -->
     <div class="card">
         <h2>Performance & Efficiency Metrics</h2>
         <div class="grid">
             <div class="metric-box" style="border-color: #a855f7;">
-                <div class="metric-title">Code Efficiency (Code Rate R)</div>
-                <div class="metric-val" id="effVal">57.14%</div>
+                <div class="metric-title">Code Efficiency (Rate R)</div>
+                <div class="metric-val">57.14%</div>
             </div>
             <div class="metric-box" style="border-color: #ec4899;">
                 <div class="metric-title">Redundancy Overhead</div>
-                <div class="metric-val" id="overVal">42.86%</div>
+                <div class="metric-val">42.86%</div>
             </div>
             <div class="metric-box" style="border-color: #3b82f6;">
                 <div class="metric-title">Bit Error Rate (BER)</div>
                 <div class="metric-val" id="berVal">0.00%</div>
             </div>
             <div class="metric-box" style="border-color: #10b981;">
-                <div class="metric-title">Corrupted Bits (Injected)</div>
+                <div class="metric-title">Injected Bit Errors</div>
                 <div class="metric-val" id="errCountVal">0</div>
             </div>
         </div>
     </div>
 
-    <!-- Channel Parameters Breakdown -->
-    <div class="card">
-        <h2>Channel & Codec Parameters</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Parameter</th>
-                    <th>Value</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Block Structure</strong></td>
-                    <td><span class="badge badge-info">(7,4) SEC</span></td>
-                    <td>4 Data Bits ($d_1..d_4$) + 3 Parity Bits ($p_1, p_2, p_4$)</td>
-                </tr>
-                <tr>
-                    <td><strong>Coding Rate ($R = k / n$)</strong></td>
-                    <td><strong>0.571 (57.1%)</strong></td>
-                    <td>Ratio of useful message bits to total transmitted bits</td>
-                </tr>
-                <tr>
-                    <td><strong>Redundancy Overhead</strong></td>
-                    <td><strong>42.86%</strong></td>
-                    <td>Extra parity bits added for forward error correction (FEC)</td>
-                </tr>
-                <tr>
-                    <td><strong>Minimum Hamming Distance ($d_{min}$)</strong></td>
-                    <td><strong>3</strong></td>
-                    <td>Guarantees 1-bit error correction or 2-bit error detection</td>
-                </tr>
-                <tr>
-                    <td><strong>Error Correction Capacity</strong></td>
-                    <td><strong>1 Bit / Block</strong></td>
-                    <td>Multiple errors in a single 7-bit block cause miscorrection</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
     <script>
         const params = new URLSearchParams(window.location.search);
         
-        // Extract inputs from query parameters
-        const orig = params.get('orig') || 'HELLO';
-        const corr = params.get('corr') || 'HELLO';
-        const rec = params.get('rec') || 'HELLO';
+        const orig = params.get('orig') || 'Hello';
+        const corr = params.get('corr') || 'Helln';
+        const rec = params.get('rec') || 'Hello';
         const errs = parseInt(params.get('errs')) || 0;
+        const blocksData = params.get('blocks');
 
         document.getElementById('origText').textContent = orig;
         document.getElementById('corrText').textContent = corr;
         document.getElementById('recText').textContent = rec;
-
-        // Calculate Bit Error Rate (BER)
-        const totalBits = orig.length * 8 * (7/4); // 8 bits per char converted to 7-bit codewords
-        const ber = totalBits > 0 ? ((errs / totalBits) * 100).toFixed(2) : '0.00';
-        
-        document.getElementById('berVal').textContent = ber + '%';
         document.getElementById('errCountVal').textContent = errs;
 
-        // Status Evaluation
+        // Calculate BER
+        const totalBits = orig.length * 8 * (7/4);
+        const ber = totalBits > 0 ? ((errs / totalBits) * 100).toFixed(2) : '0.00';
+        document.getElementById('berVal').textContent = ber + '%';
+
+        // Render Syndrome Table
+        const tbody = document.getElementById('syndromeTableBody');
+        if (blocksData) {
+            const rows = blocksData.split(';');
+            rows.forEach((rowStr) => {
+                if (!rowStr) return;
+                const [blk, recv, syn, errPos, action] = rowStr.split('|');
+                const tr = document.createElement('tr');
+                
+                let actionClass = 'action-no-error';
+                if (action.includes('CORRECTED')) actionClass = 'action-corrected';
+                if (action.includes('FAILED')) actionClass = 'action-failed';
+
+                tr.innerHTML = `
+                    <td>${blk}</td>
+                    <td style="letter-spacing: 2px;">${recv}</td>
+                    <td style="letter-spacing: 2px;">${syn}</td>
+                    <td>${errPos}</td>
+                    <td class="${actionClass}">${action}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Evaluate Transmission Status
         const banner = document.getElementById('statusBanner');
         if (orig === rec) {
-            banner.textContent = "✓ TRANSMISSION SUCCESSFUL — ALL BIT ERRORS CORRECTED";
+            banner.textContent = "STATUS: TRANSMISSION SUCCESSFUL";
             banner.className = "status-banner status-success";
         } else {
-            banner.textContent = "✕ TRANSMISSION FAILED — MULTI-BIT ERROR EXCEEDED SEC CAPACITY";
+            banner.textContent = "STATUS: TRANSMISSION FAILED";
             banner.className = "status-banner status-fail";
         }
     </script>
