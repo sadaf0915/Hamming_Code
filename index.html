@@ -1,294 +1,125 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hamming (7,4) Code Analytics Dashboard</title>
-    <style>
-        :root { 
-            --bg: #0f172a; 
-            --card: #1e293b; 
-            --text: #f8fafc; 
-            --accent: #38bdf8; 
-            --success: #22c55e; 
-            --error: #ef4444; 
-            --warning: #f59e0b;
-        }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: var(--bg); 
-            color: var(--text); 
-            max-width: 950px; 
-            margin: 30px auto; 
-            padding: 0 20px; 
-        }
-        .card { 
-            background: var(--card); 
-            padding: 24px; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); 
-            margin-bottom: 20px; 
-        }
-        h1, h2 { color: var(--accent); margin-top: 0; }
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 15px; 
-            margin-bottom: 20px; 
-        }
-        .metric-box { 
-            background: #0f172a; 
-            padding: 16px; 
-            border-radius: 8px; 
-            border-left: 4px solid var(--accent); 
-        }
-        .metric-title { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-val { font-size: 20px; font-weight: bold; margin-top: 6px; font-family: monospace; }
-        .metric-desc { font-size: 11px; color: #94a3b8; margin-top: 6px; line-height: 1.3; }
-        
-        .status-banner { 
-            padding: 16px; 
-            border-radius: 8px; 
-            text-align: center; 
-            font-weight: bold; 
-            font-size: 16px; 
-            margin-bottom: 20px;
-        }
-        .status-success { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
-        .status-fail { background: rgba(239, 68, 68, 0.15); color: var(--error); border: 1px solid var(--error); }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-family: monospace; }
-        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #334155; }
-        th { color: var(--accent); font-size: 13px; text-transform: uppercase; background: #0f172a; }
-        tr:hover { background: rgba(56, 189, 248, 0.05); }
+clc; clear; close all;
 
-        /* Bit Block Visualization Styles */
-        .bit-container { display: flex; gap: 4px; justify-content: center; }
-        .bit-box { 
-            width: 22px; 
-            height: 26px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            font-size: 13px;
-            background: #0f172a;
-            border: 1px solid #334155;
-        }
-        .bit-corrected { background: rgba(34, 197, 94, 0.3); border-color: var(--success); color: var(--success); animation: pulse 1.5s infinite; }
+disp('====================================================');
+disp('     HAMMING CODE TRANSMISSION ANALYTICS');
+disp('====================================================');
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-            100% { transform: scale(1); }
-        }
+% 1. Input Data Analysis
+text = input('Enter text to transmit: ', 's');
+if isempty(text), text = 'Hello'; end
 
-        .action-no-error { color: #94a3b8; }
-        .action-corrected { color: var(--success); font-weight: bold; }
-        .action-failed { color: var(--error); font-weight: bold; }
-    </style>
-</head>
-<body>
+b2t = @(b) char(bin2dec(char(reshape(b, 8, []).' + '0'))).';
+data_bits = reshape(dec2bin(double(text), 8)' - '0', 1, []);
+num_blocks = length(data_bits) / 4;
 
-    <h1>Hamming (7,4) Channel Transmission Analytics</h1>
+fprintf('\n----------------------------------------------------\n  1. INPUT DATA ANALYSIS\n----------------------------------------------------\n');
+fprintf('Original Text       : %s\nCharacter Count     : %d\nRaw Binary Bits     : %d bits\n', ...
+    text, length(text), length(data_bits));
 
-    <!-- Output Text Overview -->
-    <div class="grid">
-        <div class="metric-box">
-            <div class="metric-title">Original Text</div>
-            <div class="metric-val" id="origText">--</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-title">Corrupted Text</div>
-            <div class="metric-val" id="corrText" style="color: var(--warning);">--</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-title">Recovered Text</div>
-            <div class="metric-val" id="recText" style="color: var(--success);">--</div>
-        </div>
-    </div>
+% 2. Parity Generation Equations
+fprintf('\n====================================================\n           PARITY GENERATION EQUATIONS             \n====================================================\n');
+fprintf(' Data Bits   : d1, d2, d3, d4  (Positions 3, 5, 6, 7)\n');
+fprintf(' Parity Bits : p1, p2, p4      (Positions 1, 2, 4)\n\n');
+fprintf(' Equations:  p1 = mod(d1 + d2 + d4, 2)\n            p2 = mod(d1 + d3 + d4, 2)\n            p4 = mod(d2 + d3 + d4, 2)\n');
+fprintf('====================================================\n');
 
-    <!-- Status Banner -->
-    <div id="statusBanner" class="status-banner status-success">Processing Transmission Stream...</div>
+% 3. Encoding Process
+encoded = zeros(1, num_blocks * 7);
+fprintf('\n----------------------------------------------------\n  2. ENCODING PROCESS (4-bit Data -> 7-bit Codeword)\n----------------------------------------------------\n');
+fprintf('Codeword Structure : [p1  p2  d1  p4  d2  d3  d4]\n');
+fprintf('Bit Index          :   1   2   3   4   5   6   7 \n');
+fprintf('----------------------------------------------------\n');
+fprintf('Block | Data (d1 d2 d3 d4) | Parities (p1 p2 p4) | Codeword (p1 p2 d1 p4 d2 d3 d4)\n');
+fprintf('------|-------------------|----------------------|--------------------------------\n');
 
-    <!-- Static Syndrome Reference Table -->
-    <div class="card">
-        <h2>Syndrome Decoding Reference Table</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Syndrome (S4 S2 S1)</th>
-                    <th>Decimal Value</th>
-                    <th>Error Position</th>
-                    <th>Action Taken</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>0 0 0</td>
-                    <td>0</td>
-                    <td>None</td>
-                    <td class="action-no-error">NO ERROR</td>
-                </tr>
-                <tr>
-                    <td>0 0 1</td>
-                    <td>1</td>
-                    <td>Bit 1</td>
-                    <td class="action-corrected">CORRECTED Bit 1 (p1)</td>
-                </tr>
-                <tr>
-                    <td>0 1 0</td>
-                    <td>2</td>
-                    <td>Bit 2</td>
-                    <td class="action-corrected">CORRECTED Bit 2 (p2)</td>
-                </tr>
-                <tr>
-                    <td>0 1 1</td>
-                    <td>3</td>
-                    <td>Bit 3</td>
-                    <td class="action-corrected">CORRECTED Bit 3 (d1)</td>
-                </tr>
-                <tr>
-                    <td>1 0 0</td>
-                    <td>4</td>
-                    <td>Bit 4</td>
-                    <td class="action-corrected">CORRECTED Bit 4 (p4)</td>
-                </tr>
-                <tr>
-                    <td>1 0 1</td>
-                    <td>5</td>
-                    <td>Bit 5</td>
-                    <td class="action-corrected">CORRECTED Bit 5 (d2)</td>
-                </tr>
-                <tr>
-                    <td>1 1 0</td>
-                    <td>6</td>
-                    <td>Bit 6</td>
-                    <td class="action-corrected">CORRECTED Bit 6 (d3)</td>
-                </tr>
-                <tr>
-                    <td>1 1 1</td>
-                    <td>7</td>
-                    <td>Bit 7</td>
-                    <td class="action-corrected">CORRECTED Bit 7 (d4)</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+for k = 1:num_blocks
+    d = data_bits((k-1)*4 + 1 : k*4);
+    p = [mod(d(1)+d(2)+d(4),2), mod(d(1)+d(3)+d(4),2), mod(d(2)+d(3)+d(4),2)];
+    cw = [p(1), p(2), d(1), p(3), d(2), d(3), d(4)];
+    encoded((k-1)*7 + 1 : k*7) = cw;
+    fprintf(' %3d  |     %d %d %d %d       |        %d  %d  %d      |    %d %d %d %d %d %d %d\n', k, d, p, cw);
+end
 
-    <!-- Decoding & Syndrome Analysis Card -->
-    <div class="card">
-        <h2>4. Decoding & Syndrome Analysis</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Block</th>
-                    <th>Received Block</th>
-                    <th>Syndrome (S4 S2 S1)</th>
-                    <th>Error Pos</th>
-                    <th>Action Taken</th>
-                </tr>
-            </thead>
-            <tbody id="syndromeTableBody">
-                <!-- Dynamically populated from MATLAB parameters -->
-            </tbody>
-        </table>
-    </div>
+fprintf('\nTotal Encoded Bits  : %d bits (42.86%% Redundancy Overhead)\n', length(encoded));
 
-    <!-- Performance & Efficiency Metrics -->
-    <div class="card">
-        <h2>Performance & Efficiency Metrics</h2>
-        <div class="grid">
-            <div class="metric-box" style="border-color: #a855f7;">
-                <div class="metric-title">Code Efficiency (Rate R)</div>
-                <div class="metric-val">57.14%</div>
-                <div class="metric-desc">Ratio of actual data bits to total transmitted bits (k/n = 4/7).</div>
-            </div>
-            <div class="metric-box" style="border-color: #ec4899;">
-                <div class="metric-title">Redundancy Overhead</div>
-                <div class="metric-val">42.86%</div>
-                <div class="metric-desc">Percentage of channel bandwidth used purely for parity error protection.</div>
-            </div>
-            <div class="metric-box" style="border-color: #3b82f6;">
-                <div class="metric-title">Bit Error Rate (BER)</div>
-                <div class="metric-val" id="berVal">0.00%</div>
-                <div class="metric-desc">Percentage of corrupted bits introduced during transmission over total bits.</div>
-            </div>
-            <div class="metric-box" style="border-color: #10b981;">
-                <div class="metric-title">Injected Bit Errors</div>
-                <div class="metric-val" id="errCountVal">0</div>
-                <div class="metric-desc">Total count of flipped bits introduced during noise simulation.</div>
-            </div>
-        </div>
-    </div>
+% 4. Error Injection with Bit Selection Reference
+fprintf('\n----------------------------------------------------\n  3. ERROR INJECTION WITH BIT SELECTION REFERENCE\n----------------------------------------------------\n');
+fprintf('Total stream length: 1 to %d bits (%d blocks).\n\n', length(encoded), num_blocks);
+fprintf('BIT SELECTION REFERENCE:\nBlock | Parity Bit Positions (Metadata) | Data Bit Positions (Text Distortion)\n------|---------------------------------|-------------------------------------\n');
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        
-        const orig = params.get('orig') || 'Hello';
-        const corr = params.get('corr') || 'Helln';
-        const rec = params.get('rec') || 'Hello';
-        const errs = parseInt(params.get('errs')) || 0;
-        const blocksData = params.get('blocks');
+for k = 1:num_blocks
+    base = (k-1)*7;
+    fprintf(' %3d  | %3d, %3d, %3d                 | %3d, %3d, %3d, %3d\n', k, base+[1,2,4], base+[3,5,6,7]);
+end
 
-        document.getElementById('origText').textContent = orig;
-        document.getElementById('corrText').textContent = corr;
-        document.getElementById('recText').textContent = rec;
-        document.getElementById('errCountVal').textContent = errs;
+fprintf('\n');
 
-        // Calculate BER
-        const totalBits = orig.length * 8 * (7/4);
-        const ber = totalBits > 0 ? ((errs / totalBits) * 100).toFixed(2) : '0.00';
-        document.getElementById('berVal').textContent = ber + '%';
+pos_list = input('Enter bit position(s) to corrupt as vector [e.g., 3 10 17] (0 for no error): ');
+valid_pos = pos_list(pos_list > 0 & pos_list <= length(encoded));
 
-        // Render Dynamic Syndrome Table & Highlighted Errors
-        const tbody = document.getElementById('syndromeTableBody');
-        if (blocksData) {
-            const rows = blocksData.split(';');
-            rows.forEach((rowStr) => {
-                if (!rowStr) return;
-                const [blk, recv, syn, errPosStr, action] = rowStr.split('|');
-                const errPos = parseInt(errPosStr);
-                const tr = document.createElement('tr');
-                
-                let actionClass = 'action-no-error';
-                if (action.includes('CORRECTED')) actionClass = 'action-corrected';
-                if (action.includes('FAILED')) actionClass = 'action-failed';
+received = encoded;
+if ~isempty(valid_pos)
+    for p = valid_pos
+        received(p) = 1 - received(p);
+        blk = ceil(p / 7);
+        bit_in_blk = mod(p - 1, 7) + 1;
+        type_str = 'PARITY BIT';
+        if ismember(bit_in_blk, [3, 5, 6, 7]), type_str = 'DATA BIT'; end
+        fprintf('--> Bit %d flipped (Block %d, Pos %d - %s).\n', p, blk, bit_in_blk, type_str);
+    end
+else
+    fprintf('--> No error introduced.\n');
+end
 
-                // Format Received Bits into Visual Boxes with Highlighting
-                const rawBits = recv.replace(/\s+/g, '').split('');
-                let visualBitsHTML = '<div class="bit-container">';
-                rawBits.forEach((bit, idx) => {
-                    const pos = idx + 1;
-                    if (pos === errPos) {
-                        visualBitsHTML += `<div class="bit-box bit-corrected" title="Error detected & corrected at position ${pos}">${bit}</div>`;
-                    } else {
-                        visualBitsHTML += `<div class="bit-box">${bit}</div>`;
-                    }
-                });
-                visualBitsHTML += '</div>';
+% 5. Processing & Web Dashboard Data Preparation
+decoded_bits = zeros(1, num_blocks * 4);
+corrupted_bits = zeros(1, num_blocks * 4);
+block_records = cell(1, num_blocks);
 
-                tr.innerHTML = `
-                    <td>${blk}</td>
-                    <td>${visualBitsHTML}</td>
-                    <td style="letter-spacing: 2px;">${syn}</td>
-                    <td>${errPos === 0 ? 'None' : errPos}</td>
-                    <td class="${actionClass}">${action}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
+for k = 1:num_blocks
+    b = received((k-1)*7 + 1 : k*7);
+    s = [mod(b(1)+b(3)+b(5)+b(7), 2), mod(b(2)+b(3)+b(6)+b(7), 2), mod(b(4)+b(5)+b(6)+b(7), 2)];
 
-        // Evaluate Transmission Status
-        const banner = document.getElementById('statusBanner');
-        if (orig === rec) {
-            banner.textContent = "STATUS: TRANSMISSION SUCCESSFUL";
-            banner.className = "status-banner status-success";
-        } else {
-            banner.textContent = "STATUS: TRANSMISSION FAILED";
-            banner.className = "status-banner status-fail";
-        }
-    </script>
-</body>
-</html>
+    raw_d = b([3, 5, 6, 7]);
+    if isequal(s, [1 0 0]), raw_d(1) = ~raw_d(1);
+    elseif isequal(s, [0 1 0]), raw_d(2) = ~raw_d(2);
+    elseif isequal(s, [0 0 1]), raw_d(3) = ~raw_d(3);
+    end
+    corrupted_bits((k-1)*4 + 1 : k*4) = raw_d;
+
+    syn_val = s(1) + 2*s(2) + 4*s(3);
+    if syn_val ~= 0
+        b(syn_val) = ~b(syn_val);
+        action = sprintf('CORRECTED Bit %d', syn_val);
+    else
+        action = 'NO ERROR';
+    end
+
+    decoded_bits((k-1)*4 + 1 : k*4) = b([3, 5, 6, 7]);
+    
+    rec_str = sprintf('%d %d %d %d %d %d %d', received((k-1)*7 + 1 : k*7));
+    syn_str = sprintf('%d %d %d', s(3), s(2), s(1));
+    block_records{k} = sprintf('%d|%s|%s|%d|%s', k, rec_str, syn_str, syn_val, action);
+end
+
+% 6. Reconstructed Output & Dashboard Trigger
+corrupted_text = b2t(corrupted_bits);
+result = b2t(decoded_bits);
+
+fprintf('\n----------------------------------------------------\n  4. RECONSTRUCTED OUTPUT\n----------------------------------------------------\n');
+fprintf('Original Text  : %s\n', text);
+fprintf('Corrupted Text : %s\n', corrupted_text);
+fprintf('Recovered Text : %s\n\n', result);
+
+% Launch Web Dashboard on GitHub Pages
+baseUrl = 'https://sadaf0915.github.io/Hamming_Code/';
+urlEnc = @(str) char(java.net.URLEncoder.encode(str, 'UTF-8'));
+
+blocks_param = strjoin(block_records, ';');
+num_errors = length(valid_pos);
+
+fullUrl = sprintf('%s?orig=%s&corr=%s&rec=%s&errs=%d&blocks=%s', ...
+    baseUrl, urlEnc(text), urlEnc(corrupted_text), urlEnc(result), num_errors, urlEnc(blocks_param));
+
+disp('Opening Web Dashboard...');
+web(fullUrl, '-browser');
