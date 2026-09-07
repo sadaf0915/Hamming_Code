@@ -75,7 +75,6 @@
             background: #0f172a;
             border: 1px solid #334155;
         }
-        .bit-error { background: rgba(239, 68, 68, 0.3); border-color: var(--error); color: var(--error); }
         .bit-corrected { background: rgba(34, 197, 94, 0.3); border-color: var(--success); color: var(--success); animation: pulse 1.5s infinite; }
 
         @keyframes pulse {
@@ -112,14 +111,14 @@
     <!-- Status Banner -->
     <div id="statusBanner" class="status-banner status-success">Processing Transmission Stream...</div>
 
-    <!-- Interactive Decoding Table -->
+    <!-- Decoding & Syndrome Analysis Card -->
     <div class="card">
-        <h2>4. Decoding & Visual Error Detection</h2>
+        <h2>4. Decoding & Syndrome Analysis</h2>
         <table>
             <thead>
                 <tr>
                     <th>Block</th>
-                    <th>Received 7-Bit Block</th>
+                    <th>Received Block</th>
                     <th>Syndrome (S4 S2 S1)</th>
                     <th>Error Pos</th>
                     <th>Action Taken</th>
@@ -131,18 +130,27 @@
         </table>
     </div>
 
-    <!-- Step-by-Step Logic Explanation -->
+    <!-- Performance & Efficiency Metrics -->
     <div class="card">
-        <h2>How Detection & Correction Works</h2>
-        <ul style="line-height: 1.8; color: #cbd5e1; font-size: 14px;">
-            <li><strong>Step 1 (Syndrome Calculation):</strong> The receiver calculates parity check equations:
-                <br><code style="color: var(--accent);">S1 = mod(b1 + b3 + b5 + b7, 2)</code>
-                <br><code style="color: var(--accent);">S2 = mod(b2 + b3 + b6 + b7, 2)</code>
-                <br><code style="color: var(--accent);">S4 = mod(b4 + b5 + b6 + b7, 2)</code>
-            </li>
-            <li><strong>Step 2 (Position Lookup):</strong> The binary value of syndrome <code style="color: var(--accent);">(S4 S2 S1)</code> directly indicates the 1-based index of the corrupted bit (e.g., <code style="color: var(--accent);">111 = Bit 7</code>).</li>
-            <li><strong>Step 3 (Bit Inversion):</strong> If syndrome $\neq 000$, bit at position <code style="color: var(--accent);">Error Pos</code> is flipped (<code style="color: var(--accent);">0 $\rightarrow$ 1</code> or <code style="color: var(--accent);">1 $\rightarrow$ 0</code>) to restore data integrity.</li>
-        </ul>
+        <h2>Performance & Efficiency Metrics</h2>
+        <div class="grid">
+            <div class="metric-box" style="border-color: #a855f7;">
+                <div class="metric-title">Code Efficiency (Rate R)</div>
+                <div class="metric-val">57.14%</div>
+            </div>
+            <div class="metric-box" style="border-color: #ec4899;">
+                <div class="metric-title">Redundancy Overhead</div>
+                <div class="metric-val">42.86%</div>
+            </div>
+            <div class="metric-box" style="border-color: #3b82f6;">
+                <div class="metric-title">Bit Error Rate (BER)</div>
+                <div class="metric-val" id="berVal">0.00%</div>
+            </div>
+            <div class="metric-box" style="border-color: #10b981;">
+                <div class="metric-title">Injected Bit Errors</div>
+                <div class="metric-val" id="errCountVal">0</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -157,8 +165,14 @@
         document.getElementById('origText').textContent = orig;
         document.getElementById('corrText').textContent = corr;
         document.getElementById('recText').textContent = rec;
+        document.getElementById('errCountVal').textContent = errs;
 
-        // Render Syndrome & Bit Correction Table
+        // Calculate BER
+        const totalBits = orig.length * 8 * (7/4);
+        const ber = totalBits > 0 ? ((errs / totalBits) * 100).toFixed(2) : '0.00';
+        document.getElementById('berVal').textContent = ber + '%';
+
+        // Render Syndrome Table & Highlighted Errors
         const tbody = document.getElementById('syndromeTableBody');
         if (blocksData) {
             const rows = blocksData.split(';');
@@ -172,7 +186,7 @@
                 if (action.includes('CORRECTED')) actionClass = 'action-corrected';
                 if (action.includes('FAILED')) actionClass = 'action-failed';
 
-                // Format Received Bits into Visual Boxes
+                // Format Received Bits into Visual Boxes with Highlighting
                 const rawBits = recv.replace(/\s+/g, '').split('');
                 let visualBitsHTML = '<div class="bit-container">';
                 rawBits.forEach((bit, idx) => {
@@ -196,13 +210,13 @@
             });
         }
 
-        // Status Banner Evaluation
+        // Evaluate Transmission Status
         const banner = document.getElementById('statusBanner');
         if (orig === rec) {
-            banner.textContent = "STATUS: TRANSMISSION SUCCESSFUL — ALL BIT ERRORS CORRECTED";
+            banner.textContent = "STATUS: TRANSMISSION SUCCESSFUL";
             banner.className = "status-banner status-success";
         } else {
-            banner.textContent = "STATUS: TRANSMISSION FAILED — MULTI-BIT ERRORS DETECTED";
+            banner.textContent = "STATUS: TRANSMISSION FAILED";
             banner.className = "status-banner status-fail";
         }
     </script>
