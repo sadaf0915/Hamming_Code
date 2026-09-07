@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hamming Code Simulator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f4f6f8; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; font-size: 22px; margin-bottom: 20px; }
+        .field { margin-bottom: 15px; }
+        .label { font-weight: bold; color: #555; }
+        .value { font-family: monospace; font-size: 16px; background: #eef2f5; padding: 8px; border-radius: 4px; word-break: break-all; margin-top: 5px; }
+        .status { padding: 12px; border-radius: 4px; font-weight: bold; text-align: center; margin-top: 20px; }
+        .success { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Hamming (7,4) Code Transmission Dashboard</h1>
+        
+        <div class="field">
+            <div class="label">Original Text:</div>
+            <div class="value" id="origText">Loading...</div>
+        </div>
+        
+        <div class="field">
+            <div class="label">Corrupted Text:</div>
+            <div class="value" id="corrText">Loading...</div>
+        </div>
+
+        <div class="field">
+            <div class="label">Recovered Text:</div>
+            <div class="value" id="recText">Loading...</div>
+        </div>
+
+        <div id="statusBox" class="status">Waiting for data...</div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const orig = params.get('orig') || 'N/A';
+        const corr = params.get('corr') || 'N/A';
+        const rec = params.get('rec') || 'N/A';
+
+        document.getElementById('origText').textContent = orig;
+        document.getElementById('corrText').textContent = corr;
+        document.getElementById('recText').textContent = rec;
+
+        const statusBox = document.getElementById('statusBox');
+        if (orig !== 'N/A' && orig === rec) {
+            statusBox.textContent = "STATUS: TRANSMISSION SUCCESSFUL";
+            statusBox.className = "status success";
+        } else if (orig !== 'N/A') {
+            statusBox.textContent = "STATUS: TRANSMISSION FAILED";
+            statusBox.className = "status fail";
+        }
+    </script>
+</body>
+</html>
